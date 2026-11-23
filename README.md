@@ -12,6 +12,12 @@ App Router, production build. When the page you first load has a `#fragment`, la
 
 Reproduces on 16.4.6 and 16.5.0-canary.61. A static page (`/` with `#a`/`#b` links) does not reproduce it.
 
-## Likely cause
+## Failing test
+
+`npm install && npx playwright install chromium && npm test` builds and starts the app, then runs these steps in Chromium ([`tests/initial-hash.spec.js`](tests/initial-hash.spec.js)). The two tests that start from `/s?q=1#a` fail with the URLs above; the control, which starts from `/s?q=1`, passes. With the change below patched into `node_modules`, all three pass.
+
+## Cause
 
 `create-initial-router-state.ts` sets `canonicalUrl` from `location` with its hash (`createHrefFromUrl(location)`, `includeHash` defaults to true) and passes it to `discoverKnownRoute`. A later navigation to that known route builds `route.canonicalUrl + url.hash` (`app-router-state`, `navigateUsingPrefetchedRouteTree`). #93132 made routes discovered by navigation store a hashless canonical URL; the initial route still stores its hash.
+
+The change: pass `createHrefFromUrl(location, false)` to `discoverKnownRoute` in place of `canonicalUrl`, leaving `canonicalUrl` itself as is for the initial history entry.
